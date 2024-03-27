@@ -5,12 +5,10 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using DG.Tweening;
 using System;
-using UnityEngine.Rendering.Universal.Internal;
 
 public class PlayerController : UnitBase
 {
     public float _rotateSpeed = 2f;
-    
     private float vx;
     private float vy;
     public Action<int> PlayerHpEvent;
@@ -62,19 +60,30 @@ public class PlayerController : UnitBase
         }
 
         _fireEffect.Play();
+        _cartridgeEffect.Play();
         StartCoroutine(COShake());
         int mask = (1 << (int)Define.LayerList.Unit) | (1 << (int)Define.LayerList.Obstacle);
 
-        Debug.DrawRay(_firePos.position, _firePos.transform.forward * 100f, Color.green, 1f);
-        bool isHit = Physics.Raycast(_firePos.position, _firePos.transform.forward, out var hit, float.MaxValue, mask);
+        Debug.DrawRay(_firePos.position, _firePos.forward * 100f, Color.green, 1f);
+        bool isHit = Physics.Raycast(_firePos.position, _firePos.forward , out var hit, float.MaxValue, mask);
         if (!isHit)
             return;
 
-        if (hit.collider.gameObject.layer == (int)Define.LayerList.Obstacle)
+        if (hit.collider.gameObject.layer == (int)Define.LayerList.Obstacle) {
+            GameObject effect = Managers.Resources.Instantiate("Effect/BulletEffect", null);
+            effect.transform.position = hit.point;
+            effect.transform.LookAt(_firePos.position);
+            Destroy(effect, 1f);
             return;
 
+        }
+
         if (hit.collider.gameObject.layer == (int)Define.LayerList.Unit) {
-            UnitBase player = hit.collider.GetComponent<UnitBase>();
+            GameObject effect = Managers.Resources.Instantiate("Effect/BloodEffect", null);
+            effect.transform.position = hit.point;
+            effect.transform.LookAt(_firePos.position);
+            UnitBase player = hit.collider.GetComponentInChildren<UnitBase>();
+            Destroy(effect, 1f);
             player.Hit(this);
         }
     }
@@ -84,14 +93,10 @@ public class PlayerController : UnitBase
 
         _hp -= 10;
         PlayerHpEvent?.Invoke(_hp);
-        Debug.Log($"{name}피격당함. 남은체력 {_hp}");
         if (_hp <= 0) {
             Dead();
-            var player = attacker as PlayerController;
             var ai = attacker as AIController;
-            if (player)
-                player.PlayerKillEvent?.Invoke(++_killNumber);
-            else if (ai) {
+            if (ai) {
                 ai._targetUnit = null;
             }
         }
@@ -174,7 +179,7 @@ public class PlayerController : UnitBase
 
             while (true) {
                 exitTime += Time.deltaTime;
-                vx += exitTime * 3f;
+                vx += exitTime * 2f;
 
                 if (exitTime > .1f)
                     break;

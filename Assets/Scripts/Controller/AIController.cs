@@ -1,18 +1,20 @@
 using UnityEngine;
 using UnityEngine.AI;
 using System.Collections;
+using DG.Tweening;
 public class AIController : UnitBase
 {
     private NavMeshAgent _agent;
-    public UnitBase _targetUnit;
+    [HideInInspector]public UnitBase _targetUnit;
     private Transform _movePoint;
     private AIFov _fov;
     protected override void Awake() {
         base.Awake();
+        _rigid = GetComponentInParent<Rigidbody>();
         _fov = GetComponent<AIFov>();
-        _agent = GetComponent<NavMeshAgent>();
+        _agent = GetComponentInParent<NavMeshAgent>();
         _agent.speed = _moveSpeed;
-        _movePoint = GameObject.Find("AiMovePoint").transform;
+        _movePoint = GameObject.Find("AiMovePoints").transform;
     }
 
     private void Start() {
@@ -27,6 +29,8 @@ public class AIController : UnitBase
 
         if (_targetUnit && !_fov.isTracePlayer() && State == Define.UnitState.Shot) {
             _targetUnit = null;
+            State = Define.UnitState.Idle;
+
             StartCoroutine(CoMove());
         }
     }
@@ -47,18 +51,29 @@ public class AIController : UnitBase
         }
 
         _fireEffect.Play();
-        float ran = Random.Range(-.3f, .3f);
+        _cartridgeEffect.Play();
+        float ran = Random.Range(-.25f, .25f);
         int mask = (1 << (int)Define.LayerList.Unit) | (1 << (int)Define.LayerList.Obstacle);
-        Debug.DrawRay(_firePos.position, _firePos.transform.forward * 100f, Color.red, 1f);
-        bool isHit = Physics.Raycast(_firePos.position, _firePos.transform.forward + new Vector3(ran, ran, 0f), out var hit, float.MaxValue, mask);
+        Debug.DrawRay(_firePos.position, _firePos.forward * 100f, Color.red, 1f);
+        bool isHit = Physics.Raycast(_firePos.position, _firePos.forward + new Vector3(ran,ran,0f), out var hit, float.MaxValue, mask);
         if (!isHit)
             return;
 
-        if (hit.collider.gameObject.layer == (int)Define.LayerList.Obstacle)
+        if (hit.collider.gameObject.layer == (int)Define.LayerList.Obstacle) {
+            GameObject effect = Managers.Resources.Instantiate("Effect/BulletEffect", null);
+            effect.transform.position = hit.point;
+            effect.transform.LookAt(_firePos.position);
+            Destroy(effect, 1f);
             return;
+        }
+        
 
         if (hit.collider.gameObject.layer == (int)Define.LayerList.Unit) {
-            UnitBase player = hit.collider.GetComponent<UnitBase>();
+            GameObject effect = Managers.Resources.Instantiate("Effect/BloodEffect", null);
+            effect.transform.position = hit.point;
+            effect.transform.LookAt(transform.position);
+            Destroy(effect, 1f);
+            UnitBase player = hit.collider.GetComponentInChildren<UnitBase>();
             player.Hit(this);
         }
     }
@@ -67,10 +82,10 @@ public class AIController : UnitBase
         int ran = Random.Range(0, _movePoint.childCount - 1);
         Transform pos = _movePoint.GetChild(ran);
         _agent.SetDestination(pos.position);
-        State = Define.UnitState.Idle;
         State = Define.UnitState.WalkFront;
         while (true) {
-            float dir = (pos.position - transform.position).magnitude;
+            float dir = (new Vector3(pos.position.x,0f,pos.position.z)
+                - new Vector3(transform.position.x, 0f, transform.position.z)).magnitude;
             
             if (_targetUnit) {
                 _agent.SetDestination(transform.position);
@@ -80,7 +95,7 @@ public class AIController : UnitBase
                 break;
             }
                 
-            if (dir < 0.1f) {
+            if (dir < 0.2f) {
                 StartCoroutine(CoMove());
                 break;
             }
@@ -93,15 +108,19 @@ public class AIController : UnitBase
             return;
 
         _hp -= 10;
-        Debug.Log($"{name}피격당함. 남은체력 {_hp}");
 
         if (!_targetUnit) {
             _targetUnit = attacker;
         }
 
         if (_hp <= 0) {
+            var player = attacker as PlayerController;
+            if (player)
+                player.PlayerKillEvent?.Invoke(++_killNumber);
             Dead();
         }
+
+        
     }
 
     public override void ReloadEvent() {

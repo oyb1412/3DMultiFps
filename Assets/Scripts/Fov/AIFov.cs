@@ -29,7 +29,6 @@ public class AIFov : MonoBehaviour
                         continue;
                     }
                     else if(target.collider.gameObject.layer == (int)Define.LayerList.Unit) {
-                        Debug.Log($"¹ß°ß!{target.collider.name}");
                         return coll.GetComponent<UnitBase>();
                     }
                 }

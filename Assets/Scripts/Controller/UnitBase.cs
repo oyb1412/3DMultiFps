@@ -8,16 +8,18 @@ public abstract class UnitBase : MonoBehaviour
     protected int _remainBulletNumber = 120;
     protected int _currentBulletNumber = 30;
     protected int _maxReloadBulletNumber = 30;
-    protected int _hp = 100;
+    [SerializeField]protected int _hp;
     protected Rigidbody _rigid;
     private Collider _collider;
     private Animator _animator;
+    protected Transform _firePos;
+
     protected ParticleSystem _fireEffect;
-    public float _moveSpeed = 5f;
+    protected ParticleSystem _cartridgeEffect;
+    [SerializeField] protected float _moveSpeed;
 
     protected int _killNumber;
     private Define.UnitState _state;
-    protected Transform _firePos;
 
     public Define.UnitState State {
         get { return _state; }
@@ -26,36 +28,40 @@ public abstract class UnitBase : MonoBehaviour
                 return;
 
             switch (value) {
+                
                 case Define.UnitState.Idle:
+                    if (State == Define.UnitState.Dead)
+                        return;
                     _animator.CrossFade("Idle", _animationFadeTime);
                     break;
                 case Define.UnitState.WalkFront:
-                    if (State == Define.UnitState.Shot || State == Define.UnitState.Reload)
+                    if (State == Define.UnitState.Shot || State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
                     _animator.CrossFade("WalkFront", _animationFadeTime);
                     break;
                 case Define.UnitState.WalkBack:
-                    if (State == Define.UnitState.Shot || State == Define.UnitState.Reload)
+                    if (State == Define.UnitState.Shot || State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
                     _animator.CrossFade("WalkBack", _animationFadeTime);
                     break;
                 case Define.UnitState.WalkLeft:
-                    if (State == Define.UnitState.Shot || State == Define.UnitState.Reload)
+                    if (State == Define.UnitState.Shot || State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
                     _animator.CrossFade("WalkLeft", _animationFadeTime);
                     break;
                 case Define.UnitState.WalkRight:
-                    if (State == Define.UnitState.Shot || State == Define.UnitState.Reload)
+                    if (State == Define.UnitState.Shot || State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
                     _animator.CrossFade("WalkRight", _animationFadeTime);
                     break;
                 case Define.UnitState.Shot:
-                    if (State == Define.UnitState.Reload)
+                    if (State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
                     _animator.CrossFade("Shot", _animationFadeTime);
                     break;
                 case Define.UnitState.Reload:
-
+                    if (State == Define.UnitState.Dead)
+                        return;
                     _animator.CrossFade("Reload", _animationFadeTime);
                     break;
                 case Define.UnitState.Dead:
@@ -68,11 +74,12 @@ public abstract class UnitBase : MonoBehaviour
     }
 
     protected virtual void Awake() {
-        _rigid = GetComponent<Rigidbody>();
         _animator = GetComponent<Animator>();
         _collider = GetComponent<Collider>();
+        _rigid = GetComponent<Rigidbody>();
         _firePos = Util.FindChild(gameObject, "FirePos").transform;
         _fireEffect = Util.FindChild(gameObject, "FireEffect").GetComponent<ParticleSystem>();
+        _cartridgeEffect = Util.FindChild(gameObject, "CartridgeEffect").GetComponent<ParticleSystem>();
     }
 
     public abstract void ShotEvent();
@@ -80,9 +87,6 @@ public abstract class UnitBase : MonoBehaviour
     public abstract void Hit(UnitBase attacker);
 
     protected void Dead() {
-        if (State == Define.UnitState.Dead)
-            return;
-
         State = Define.UnitState.Dead;
         gameObject.layer = 0;
         _collider.enabled = false;
@@ -90,6 +94,7 @@ public abstract class UnitBase : MonoBehaviour
     }
 
     public void DeadEvent() {
+        Destroy(gameObject);
         //todo
         //시체 삭제 후 카메라 띄우기
         //리스폰 대기
