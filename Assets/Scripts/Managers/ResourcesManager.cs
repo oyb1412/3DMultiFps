@@ -40,7 +40,7 @@ public class ResourcesManager
         return go;
     }
 
-    public void Destroy(GameObject go)
+    public void Destroy(GameObject go, float time = 0)
     {
         if (go == null)
         {

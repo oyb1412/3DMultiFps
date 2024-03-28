@@ -1,10 +1,11 @@
+using Photon.Pun;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public abstract class BaseScene : MonoBehaviour
+public abstract class BaseScene : MonoBehaviourPunCallbacks
 {
     public Define.SceneType SceneType { get; protected set; } = Define.SceneType.None;
 

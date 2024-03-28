@@ -32,10 +32,13 @@ public static class Define
     {
         None,
         InGame,
+        Score,
     }
 
     public enum LayerList {
+        Default = 0,
         Unit = 6,
         Obstacle,
+        Weapon,
     }
 }

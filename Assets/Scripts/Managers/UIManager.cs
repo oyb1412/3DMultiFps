@@ -2,17 +2,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class UIManager : MonoBehaviour
+public class UIManager
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+    private GameObject _playerUis;
+   
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+    public void SetPlayerUis(bool trigger) {
+        if(_playerUis == null)
+            _playerUis = GameObject.Find("UI_Player");
+
+        _playerUis.SetActive(trigger);
     }
 }

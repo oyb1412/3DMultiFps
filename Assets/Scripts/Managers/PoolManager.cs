@@ -110,4 +110,9 @@ public class PoolManager
 
         return _pools[name].Original;
     }
+
+    public void Clear() {
+        _pools.Clear();
+        Object.Destroy(_root.gameObject);
+    }
 }

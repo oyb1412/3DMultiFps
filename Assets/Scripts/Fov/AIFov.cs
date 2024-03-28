@@ -24,13 +24,16 @@ public class AIFov : MonoBehaviour
                 dir = dir.normalized;
                 if (Vector3.Angle(transform.forward, dir) < viewAngle * 0.5f) {
                     int mask = (1 << (int)Define.LayerList.Unit) | (1 << (int)Define.LayerList.Obstacle);
-                    Physics.Raycast(transform.position, dir, out var target, float.MaxValue, mask);
-                    if(target.collider.gameObject.layer == (int)Define.LayerList.Obstacle) {
+                    bool iru = Physics.Raycast(transform.position, dir, out var target, float.MaxValue, mask);
+
+                    if (!iru)
                         continue;
-                    }
-                    else if(target.collider.gameObject.layer == (int)Define.LayerList.Unit) {
+
+                    if(target.collider.gameObject.layer == (int)Define.LayerList.Obstacle)
+                        continue;
+
+                    else if(target.collider.gameObject.layer == (int)Define.LayerList.Unit)
                         return coll.GetComponent<UnitBase>();
-                    }
                 }
             }
         }

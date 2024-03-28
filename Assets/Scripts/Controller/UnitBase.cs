@@ -1,24 +1,26 @@
+using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class UnitBase : MonoBehaviour
+public abstract class UnitBase : MonoBehaviourPunCallbacks
 {
     protected readonly float _animationFadeTime = .2f;
     protected int _remainBulletNumber = 120;
     protected int _currentBulletNumber = 30;
     protected int _maxReloadBulletNumber = 30;
-    [SerializeField]protected int _hp;
+    protected int _hp = 100;
+    public int _myIndexNumber;
+
     protected Rigidbody _rigid;
     private Collider _collider;
     private Animator _animator;
     protected Transform _firePos;
-
+    public PhotonView _view;
     protected ParticleSystem _fireEffect;
     protected ParticleSystem _cartridgeEffect;
-    [SerializeField] protected float _moveSpeed;
+    protected float _moveSpeed = 0;
 
-    protected int _killNumber;
     private Define.UnitState _state;
 
     public Define.UnitState State {
@@ -27,45 +29,48 @@ public abstract class UnitBase : MonoBehaviour
             if (_state == value)
                 return;
 
+            if (!_view.IsMine)
+                return;
+
             switch (value) {
                 
                 case Define.UnitState.Idle:
                     if (State == Define.UnitState.Dead)
                         return;
-                    _animator.CrossFade("Idle", _animationFadeTime);
+                    SetAnimator("Idle");
                     break;
                 case Define.UnitState.WalkFront:
                     if (State == Define.UnitState.Shot || State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
-                    _animator.CrossFade("WalkFront", _animationFadeTime);
+                    SetAnimator("WalkFront");
                     break;
                 case Define.UnitState.WalkBack:
                     if (State == Define.UnitState.Shot || State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
-                    _animator.CrossFade("WalkBack", _animationFadeTime);
+                    SetAnimator("WalkBack");
                     break;
                 case Define.UnitState.WalkLeft:
                     if (State == Define.UnitState.Shot || State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
-                    _animator.CrossFade("WalkLeft", _animationFadeTime);
+                    SetAnimator("WalkLeft");
                     break;
                 case Define.UnitState.WalkRight:
                     if (State == Define.UnitState.Shot || State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
-                    _animator.CrossFade("WalkRight", _animationFadeTime);
+                    SetAnimator("WalkRight");
                     break;
                 case Define.UnitState.Shot:
                     if (State == Define.UnitState.Reload || State == Define.UnitState.Dead)
                         return;
-                    _animator.CrossFade("Shot", _animationFadeTime);
+                    SetAnimator("Shot");
                     break;
                 case Define.UnitState.Reload:
                     if (State == Define.UnitState.Dead)
                         return;
-                    _animator.CrossFade("Reload", _animationFadeTime);
+                    SetAnimator("Reload");
                     break;
                 case Define.UnitState.Dead:
-                    _animator.CrossFade("Dead", _animationFadeTime);
+                    SetAnimator("Dead");
                     break;
             }
 
@@ -74,6 +79,7 @@ public abstract class UnitBase : MonoBehaviour
     }
 
     protected virtual void Awake() {
+        _view = GetComponent<PhotonView>();
         _animator = GetComponent<Animator>();
         _collider = GetComponent<Collider>();
         _rigid = GetComponent<Rigidbody>();
@@ -82,26 +88,47 @@ public abstract class UnitBase : MonoBehaviour
         _cartridgeEffect = Util.FindChild(gameObject, "CartridgeEffect").GetComponent<ParticleSystem>();
     }
 
+    [PunRPC]
+    protected void SetAnimatorRPC(string name) {
+        _animator.CrossFade(name, _animationFadeTime);
+    }
+
+    [PunRPC]
+    protected void SetEffectRPC() {
+        _fireEffect.Play();
+        _cartridgeEffect.Play();
+    }
+
+    protected void SetAnimator(string name) {
+        _view.RPC("SetAnimatorRPC", RpcTarget.All, name);
+    }
     public abstract void ShotEvent();
 
-    public abstract void Hit(UnitBase attacker);
+
+    
+    protected IEnumerator CoDestroy(GameObject go, float time) {
+        yield return new WaitForSeconds(time);
+        PhotonNetwork.Destroy(go);
+    }
 
     protected void Dead() {
+        if (!_view.IsMine)
+            return;
+
         State = Define.UnitState.Dead;
         gameObject.layer = 0;
         _collider.enabled = false;
         _rigid.isKinematic = true;
     }
 
-    public void DeadEvent() {
-        Destroy(gameObject);
-        //todo
-        //시체 삭제 후 카메라 띄우기
-        //리스폰 대기
-    }
+
+    public abstract void DeadEvent();
 
 
     protected void OnReloadUpdate() {
+        if (!_view.IsMine)
+            return;
+
         if (State == Define.UnitState.Dead)
             return;
 
@@ -111,6 +138,9 @@ public abstract class UnitBase : MonoBehaviour
         State = Define.UnitState.Reload;
     }
     public virtual void ReloadEvent() {
+        if (!_view.IsMine)
+            return;
+
         if (State == Define.UnitState.Dead)
             return;
 

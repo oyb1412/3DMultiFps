@@ -5,20 +5,40 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using DG.Tweening;
 using System;
+using Photon.Pun;
 
 public class PlayerController : UnitBase
 {
     public float _rotateSpeed = 2f;
+    private GameObject _mainCamera;
+    private GameObject _otherCamera;
+    private GameObject _rifle;
     private float vx;
     private float vy;
+
     public Action<int> PlayerHpEvent;
-    public Action<int> PlayerKillEvent;
+    public Action PlayerKillEvent;
     public Action<int, int> PlayerBulletEvent;
     protected override void Awake() {
         base.Awake();
     }
     void Start()
     {
+        _view.RPC("SetIndex", RpcTarget.AllBuffered);
+
+        if (!_view.IsMine)
+            return;
+
+        _moveSpeed = 3;
+        _rifle = Util.FindChild(gameObject, "AssaultRifle");
+        _mainCamera = Util.FindChild(gameObject, "OtherCamera");
+        _otherCamera = Util.FindChild(gameObject, "WeaponCamera");
+
+        _rifle.layer = (int)Define.LayerList.Weapon;
+        _mainCamera.SetActive(true);
+        _otherCamera.SetActive(true);
+
+
         Managers.Input.OnKeyboardEvent += OnMoveUpdate;
         Managers.Input.OnKeyboardEvent += SetReload;
         Managers.Input.OnKeyboardUpEvent += OnPressExitUpdate;
@@ -26,8 +46,17 @@ public class PlayerController : UnitBase
         Managers.Input.OnMouseUpEvent += OnShotExitUpdate;
     }
 
+    [PunRPC]
+    private void SetIndex() {
+        _myIndexNumber = Managers.aiIndex - 100;
+    }
+
+
     void Update()
     {
+        if (!_view.IsMine)
+            return;
+
         if (State == Define.UnitState.Dead)
             return;
 
@@ -49,6 +78,10 @@ public class PlayerController : UnitBase
             State = Define.UnitState.Idle;
     }
     public override void ShotEvent() {
+        if (!_view.IsMine)
+            return;
+
+        Debug.Log(_myIndexNumber);
         if (State == Define.UnitState.Dead)
             return;
 
@@ -59,8 +92,8 @@ public class PlayerController : UnitBase
             return;
         }
 
-        _fireEffect.Play();
-        _cartridgeEffect.Play();
+        _view.RPC("SetEffectRPC", RpcTarget.All);
+
         StartCoroutine(COShake());
         int mask = (1 << (int)Define.LayerList.Unit) | (1 << (int)Define.LayerList.Obstacle);
 
@@ -70,38 +103,55 @@ public class PlayerController : UnitBase
             return;
 
         if (hit.collider.gameObject.layer == (int)Define.LayerList.Obstacle) {
-            GameObject effect = Managers.Resources.Instantiate("Effect/BulletEffect", null);
-            effect.transform.position = hit.point;
+            GameObject effect = PhotonNetwork.Instantiate("Prefabs/Effect/BulletEffect", hit.point, Quaternion.identity);
             effect.transform.LookAt(_firePos.position);
-            Destroy(effect, 1f);
+            StartCoroutine(CoDestroy(effect, 0.3f));
             return;
 
         }
 
         if (hit.collider.gameObject.layer == (int)Define.LayerList.Unit) {
-            GameObject effect = Managers.Resources.Instantiate("Effect/BloodEffect", null);
-            effect.transform.position = hit.point;
+            GameObject effect = PhotonNetwork.Instantiate("Prefabs/Effect/BloodEffect", hit.point, Quaternion.identity);
             effect.transform.LookAt(_firePos.position);
-            UnitBase player = hit.collider.GetComponentInChildren<UnitBase>();
-            Destroy(effect, 1f);
-            player.Hit(this);
+            UnitBase unit = hit.collider.GetComponentInChildren<UnitBase>();
+            StartCoroutine(CoDestroy(effect, 0.3f));
+
+            unit._view.RPC("SetHp", RpcTarget.All, 10, _myIndexNumber);
         }
     }
-    public override void Hit(UnitBase attacker) {
+
+    [PunRPC]
+    public void SetHp(int i, int index) {
+        if (!_view.IsMine)
+            return;
+
         if (State == Define.UnitState.Dead)
             return;
 
         _hp -= 10;
         PlayerHpEvent?.Invoke(_hp);
         if (_hp <= 0) {
-            Dead();
-            var ai = attacker as AIController;
-            if (ai) {
-                ai._targetUnit = null;
+            
+            var players = GameObject.FindObjectsByType(typeof(UnitBase), FindObjectsSortMode.None);
+            foreach(var item in players) {
+                if(index == item.GetComponent<UnitBase>()._myIndexNumber) {
+                    var ai = item as AIController;
+                    var player = item as PlayerController;
+                    if (ai) {
+                        ai._targetUnit = null;
+                    }
+                    else if (player) {
+                        player.PlayerKillEvent?.Invoke();
+                    }
+                    break;
+                }
             }
+            Dead();
+            
         }
-
     }
+
+  
 
     private void SetReload() {
         if (State == Define.UnitState.Dead)
@@ -157,6 +207,9 @@ public class PlayerController : UnitBase
     }
 
     private void OnRotateUpdate() {
+        if (!_view.IsMine)
+            return;
+
         if (State == Define.UnitState.Dead)
             return;
 
@@ -189,10 +242,24 @@ public class PlayerController : UnitBase
     }
 
     public override void ReloadEvent() {
+        if (!_view.IsMine)
+            return;
+
         base.ReloadEvent();
         if (State == Define.UnitState.Dead)
             return;
 
         PlayerBulletEvent?.Invoke(_currentBulletNumber, _remainBulletNumber);
     }
+
+    public override void DeadEvent() {
+        if (!_view.IsMine)
+            return;
+
+        _mainCamera.transform.parent = null;
+        RespawnManager.Instance.Respawn(_myIndexNumber, 5f);
+        Destroy(_mainCamera.gameObject, 5f);
+        PhotonNetwork.Destroy(gameObject);
+    }
+
 }
