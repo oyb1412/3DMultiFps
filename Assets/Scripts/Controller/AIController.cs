@@ -23,10 +23,11 @@ public class AIController : UnitBase
 
     [PunRPC]
     private void SetIndex() {
-        _myIndexNumber = Managers.aiIndex--;
+        _myIndexNumber = ++Managers.aiIndex;
     }
     private void Start() {
         _view.RPC("SetIndex", RpcTarget.AllBuffered);
+        _parent = GameObject.Find("@Pool_root").transform;
 
         StartCoroutine(CoMove());
     }
@@ -74,6 +75,7 @@ public class AIController : UnitBase
 
         if (hit.collider.gameObject.layer == (int)Define.LayerList.Obstacle) {
             GameObject effect = PhotonNetwork.Instantiate("Prefabs/Effect/BulletEffect", hit.point, Quaternion.identity);
+            effect.transform.parent = _parent;
             effect.transform.LookAt(_firePos.position);
             Destroy(effect, 1f);
             return;
@@ -82,6 +84,7 @@ public class AIController : UnitBase
 
         if (hit.collider.gameObject.layer == (int)Define.LayerList.Unit) {
             GameObject effect = PhotonNetwork.Instantiate("Prefabs/Effect/BloodEffect", hit.point, Quaternion.identity);
+            effect.transform.parent = _parent;
             effect.transform.LookAt(transform.position);
             Destroy(effect, 1f);
             UnitBase unit = hit.collider.GetComponentInChildren<UnitBase>();
@@ -116,12 +119,12 @@ public class AIController : UnitBase
     }
 
     [PunRPC]
-    public void SetHp(int i, int index) {
+    public void SetHp(int damage, int index) {
 
         if (State == Define.UnitState.Dead)
             return;
 
-        _hp -= 10;
+        _hp -= damage;
 
         if(!_targetUnit) {
             var players = GameObject.FindObjectsByType(typeof(UnitBase), FindObjectsSortMode.None);
@@ -133,16 +136,21 @@ public class AIController : UnitBase
             }
         }
         
-      if (_hp <= 0) {
+        if (_hp <= 0) {
             var players = GameObject.FindObjectsByType(typeof(UnitBase), FindObjectsSortMode.None);
             foreach (var item in players) {
-                if (index == item.GetComponent<UnitBase>()._myIndexNumber)
-                    if(item as PlayerController)
+                if (index == item.GetComponent<UnitBase>()._myIndexNumber) {
+                    if (item as AIController) {
+                        item.GetComponent<AIController>()._targetUnit = null;
+                        break;
+                    }
+                    if( item as PlayerController) {
                         item.GetComponent<PlayerController>().PlayerKillEvent?.Invoke();
-                break;
+                        break;
+                    }
+                }
             }
             Dead();
-
         }
     }
 
@@ -155,7 +163,9 @@ public class AIController : UnitBase
     }
 
     public override void DeadEvent() {
-       
+        if (!PhotonNetwork.IsMasterClient)
+            return;
+
         RespawnManager.Instance.Respawn(_myIndexNumber, 5f);
         PhotonNetwork.Destroy(gameObject);
     }

@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 using DG.Tweening;
 using System;
 using Photon.Pun;
+using Photon.Realtime;
 
 public class PlayerController : UnitBase
 {
@@ -24,12 +25,14 @@ public class PlayerController : UnitBase
     }
     void Start()
     {
-        _view.RPC("SetIndex", RpcTarget.AllBuffered);
+
 
         if (!_view.IsMine)
             return;
+        _parent = GameObject.Find("@Pool_root").transform;
 
-        _moveSpeed = 3;
+        _view.RPC("SetIndex", RpcTarget.All);
+
         _rifle = Util.FindChild(gameObject, "AssaultRifle");
         _mainCamera = Util.FindChild(gameObject, "OtherCamera");
         _otherCamera = Util.FindChild(gameObject, "WeaponCamera");
@@ -48,9 +51,8 @@ public class PlayerController : UnitBase
 
     [PunRPC]
     private void SetIndex() {
-        _myIndexNumber = Managers.aiIndex - 100;
+        _myIndexNumber = --Managers.playerIndex;
     }
-
 
     void Update()
     {
@@ -81,7 +83,6 @@ public class PlayerController : UnitBase
         if (!_view.IsMine)
             return;
 
-        Debug.Log(_myIndexNumber);
         if (State == Define.UnitState.Dead)
             return;
 
@@ -104,6 +105,7 @@ public class PlayerController : UnitBase
 
         if (hit.collider.gameObject.layer == (int)Define.LayerList.Obstacle) {
             GameObject effect = PhotonNetwork.Instantiate("Prefabs/Effect/BulletEffect", hit.point, Quaternion.identity);
+            effect.transform.parent = _parent;
             effect.transform.LookAt(_firePos.position);
             StartCoroutine(CoDestroy(effect, 0.3f));
             return;
@@ -112,6 +114,7 @@ public class PlayerController : UnitBase
 
         if (hit.collider.gameObject.layer == (int)Define.LayerList.Unit) {
             GameObject effect = PhotonNetwork.Instantiate("Prefabs/Effect/BloodEffect", hit.point, Quaternion.identity);
+            effect.transform.parent = _parent;
             effect.transform.LookAt(_firePos.position);
             UnitBase unit = hit.collider.GetComponentInChildren<UnitBase>();
             StartCoroutine(CoDestroy(effect, 0.3f));
@@ -121,29 +124,28 @@ public class PlayerController : UnitBase
     }
 
     [PunRPC]
-    public void SetHp(int i, int index) {
+    public void SetHp(int damage, int index) {
         if (!_view.IsMine)
             return;
 
         if (State == Define.UnitState.Dead)
             return;
 
-        _hp -= 10;
+        _hp -= damage;
         PlayerHpEvent?.Invoke(_hp);
+       
         if (_hp <= 0) {
-            
             var players = GameObject.FindObjectsByType(typeof(UnitBase), FindObjectsSortMode.None);
             foreach(var item in players) {
                 if(index == item.GetComponent<UnitBase>()._myIndexNumber) {
-                    var ai = item as AIController;
-                    var player = item as PlayerController;
-                    if (ai) {
-                        ai._targetUnit = null;
+                    if (item as AIController) {
+                        item.GetComponent<AIController>()._targetUnit = null;
+                        break;
                     }
-                    else if (player) {
-                        player.PlayerKillEvent?.Invoke();
+                    if (item as PlayerController) {
+                        item.GetComponent<PlayerController>().PlayerKillEvent?.Invoke();
+                        break;
                     }
-                    break;
                 }
             }
             Dead();
@@ -257,6 +259,7 @@ public class PlayerController : UnitBase
             return;
 
         _mainCamera.transform.parent = null;
+
         RespawnManager.Instance.Respawn(_myIndexNumber, 5f);
         Destroy(_mainCamera.gameObject, 5f);
         PhotonNetwork.Destroy(gameObject);

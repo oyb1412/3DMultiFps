@@ -15,6 +15,7 @@ public class Managers : MonoBehaviour
         } 
     }
     public static int aiIndex = 999;
+    public static int playerIndex = 500;
     private UIManager _ui = new UIManager();
     private PoolManager _pool = new PoolManager();
     private InputManager _input = new InputManager();

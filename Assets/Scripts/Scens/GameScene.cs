@@ -16,6 +16,7 @@ public class GameScene : BaseScene
     private float _currentTime;
     private int _exitTime = 3;
     public int index = 999;
+    public int playerindex = 0;
     public override void Clear()
     {
     }
@@ -36,7 +37,7 @@ public class GameScene : BaseScene
         if (PhotonNetwork.IsMasterClient) {
             int playerCount = PhotonNetwork.PlayerList.Length;
             for (int i = playerCount; i < _respawnPoints.childCount; i++) {
-                GameObject ai = PhotonNetwork.Instantiate($"Prefabs/Unit/Ai", _respawnPoints.GetChild(i).transform.position, Quaternion.identity);
+                PhotonNetwork.Instantiate($"Prefabs/Unit/Ai", _respawnPoints.GetChild(i).transform.position, Quaternion.identity);
             }
         }
     }
@@ -59,6 +60,11 @@ public class GameScene : BaseScene
 
     IEnumerator CoGameExit(float time) {
         yield return new WaitForSecondsRealtime(time);
-        PhotonNetwork.LoadLevel("Score");
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+
     }
 }

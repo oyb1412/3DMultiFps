@@ -40,20 +40,21 @@ public class RespawnManager : MonoBehaviourPunCallbacks
             if (count >= units.Length) {
                 GameObject unit;
 
-                if (number < 10) {
+                if (number < 600) {
                     unit = PhotonNetwork.Instantiate($"Prefabs/Unit/Player", t.position, Quaternion.identity);
-                    unit.GetComponent<PlayerController>()._view.TransferOwnership(number);
-
                     var Uis = GameObject.FindObjectsOfType(typeof(UI_Player));
                     foreach(var g in Uis) {
                         if(g.GetComponent<UI_Player>()._myIndex == unit.GetComponent<PlayerController>()._myIndexNumber) {
                             g.GetComponent<UI_Player>().SetPlayer(unit.GetComponent<PlayerController>());
+                            Debug.Log($"플레이어 번호{number}");
                             break;
                         }
                     }
                 } else {
-                    unit = PhotonNetwork.Instantiate($"Prefabs/Unit/Ai", t.position, Quaternion.identity);
-                    unit.name = "Ai";
+                    if (PhotonNetwork.IsMasterClient) {
+                        PhotonNetwork.Instantiate($"Prefabs/Unit/Ai", t.position, Quaternion.identity);
+                        Debug.Log($"Ai 번호{number}");
+                    }
                 }
                 return;
             } else

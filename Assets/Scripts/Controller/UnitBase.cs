@@ -11,6 +11,7 @@ public abstract class UnitBase : MonoBehaviourPunCallbacks
     protected int _maxReloadBulletNumber = 30;
     protected int _hp = 100;
     public int _myIndexNumber;
+    protected Transform _parent;
 
     protected Rigidbody _rigid;
     private Collider _collider;
@@ -19,7 +20,7 @@ public abstract class UnitBase : MonoBehaviourPunCallbacks
     public PhotonView _view;
     protected ParticleSystem _fireEffect;
     protected ParticleSystem _cartridgeEffect;
-    protected float _moveSpeed = 0;
+    protected float _moveSpeed = 3;
 
     private Define.UnitState _state;
 

@@ -9,15 +9,12 @@ public class ConnectedManager : MonoBehaviourPunCallbacks
     public InputField _inputField;
     public Button btn;
     private void Awake() {
-        Screen.SetResolution(960, 540, false);
-
         //초당 Send 횟수
         PhotonNetwork.SendRate = 60;
 
         //초당 패킷 직렬화 횟수
         PhotonNetwork.SerializationRate = 30;
         btn.onClick.AddListener(OnConnected);
-
     }
 
     private new void OnConnected() {
