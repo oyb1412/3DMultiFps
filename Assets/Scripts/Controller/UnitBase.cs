@@ -155,4 +155,14 @@ public abstract class UnitBase : MonoBehaviourPunCallbacks
 
         State = Define.UnitState.Idle;
     }
+
+    public void PlayShotSound() {
+        SoundManager.Instance.PlayerSfx(SoundManager.Sfx.SHOT);
+    }
+    public void PlayShotStep() {
+        SoundManager.Instance.PlayerSfx(SoundManager.Sfx.STEP);
+    }
+    public void PlayShotReload() {
+        SoundManager.Instance.PlayerSfx(SoundManager.Sfx.RELOAD);
+    }
 }

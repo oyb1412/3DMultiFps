@@ -40,6 +40,8 @@ public class GameScene : BaseScene
                 PhotonNetwork.Instantiate($"Prefabs/Unit/Ai", _respawnPoints.GetChild(i).transform.position, Quaternion.identity);
             }
         }
+
+        SoundManager.Instance.PlayerBgm(true);
     }
    
     void TimeText() {
@@ -47,6 +49,7 @@ public class GameScene : BaseScene
         if (sceneTime / 60 >= _exitTime) {
             _timeText.text = $"0{_exitTime} : 00";
             _exitText.SetActive(true);
+            SoundManager.Instance.PlayerBgm(false);
             Time.timeScale = 0f;
             StartCoroutine(CoGameExit(3f));
             return;

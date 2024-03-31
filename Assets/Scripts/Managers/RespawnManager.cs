@@ -46,14 +46,12 @@ public class RespawnManager : MonoBehaviourPunCallbacks
                     foreach(var g in Uis) {
                         if(g.GetComponent<UI_Player>()._myIndex == unit.GetComponent<PlayerController>()._myIndexNumber) {
                             g.GetComponent<UI_Player>().SetPlayer(unit.GetComponent<PlayerController>());
-                            Debug.Log($"플레이어 번호{number}");
                             break;
                         }
                     }
                 } else {
                     if (PhotonNetwork.IsMasterClient) {
                         PhotonNetwork.Instantiate($"Prefabs/Unit/Ai", t.position, Quaternion.identity);
-                        Debug.Log($"Ai 번호{number}");
                     }
                 }
                 return;
